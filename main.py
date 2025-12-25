@@ -38,11 +38,8 @@ class TabelogFollower:
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
         self.wait = WebDriverWait(self.driver, 20)
-    
-    def click_like_button_for_follower(self, full_url):
-        self.driver.get(full_url)
-        self.wait.until(lambda d: d.find_elements(By.CLASS_NAME, "rvw-item"))
 
+    def click_follow_button(self):
         follow_button = self.driver.find_element(By.CLASS_NAME, "p-follow-btn__target")
         has_is_added = "is-added" in follow_button.get_attribute("class").split()
         if not has_is_added:
@@ -51,6 +48,19 @@ class TabelogFollower:
             if follow_button.is_displayed() and follow_button.is_enabled():
                 follow_button.click()
                 time.sleep(1)
+    
+    def click_like_button_for_follower(self, full_url):
+        self.driver.get(full_url)
+        try:
+            rvw_items_present = self.wait.until(lambda d: d.find_elements(By.CLASS_NAME, "rvw-item"))
+        except Exception:
+            self.click_follow_button()
+            return
+        if not rvw_items_present:
+            self.click_follow_button()
+            return
+
+        self.click_follow_button()
 
         rvw_items = self.driver.find_elements(By.CLASS_NAME, "rvw-item")
         limited_rvw_items = rvw_items[:10]
@@ -73,9 +83,10 @@ class TabelogFollower:
         html = self.driver.find_element(By.TAG_NAME, "html")
         for _ in range(120):
             html.send_keys(Keys.PAGE_DOWN)
-            time.sleep(0.5)
+            time.sleep(1)
 
         followers = self.driver.find_elements(By.CLASS_NAME, "follow-rvwr-item")
+        # print("len => ", len(followers))
         data_urls = []
         for follow_element in followers:
             data_url = follow_element.get_attribute("data-url")
@@ -83,7 +94,8 @@ class TabelogFollower:
                 continue
             data_urls.append(data_url)
 
-        for data_url in data_urls:
+        for idx, data_url in enumerate(data_urls, start=1):
+            # print(f"Processing follower #{idx}: {data_url}")
             full_url = self.base_url + data_url
             self.click_like_button_for_follower(full_url)
             time.sleep(2)
