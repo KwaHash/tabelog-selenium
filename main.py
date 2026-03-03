@@ -5,6 +5,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 
 class TabelogFollower:
@@ -19,6 +20,10 @@ class TabelogFollower:
         self.wait = None
         self.remote_debugging_port = remote_debugging_port
         
+    def _is_window_closed_error(self, e):
+        msg = str(e).lower()
+        return "target window already closed" in msg or "web view not found" in msg
+
     def connect_to_existing_browser(self):
         """Connect to an existing Chrome browser instance with remote debugging enabled"""
         chrome_options = Options()
@@ -28,6 +33,10 @@ class TabelogFollower:
             service = Service(ChromeDriverManager().install())
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
             self.wait = WebDriverWait(self.driver, 20)
+            # Verify the attached window still exists
+            if not self.driver.window_handles:
+                print("Connected but no browser window is open. Please keep Chrome open and run again.")
+                return False
             return True
         except Exception as e:
             print(f"Failed to connect to existing browser: {e}")
@@ -113,6 +122,15 @@ class TabelogFollower:
             
         except KeyboardInterrupt:
             print("Interrupted by user")
+        except WebDriverException as e:
+            if self._is_window_closed_error(e):
+                print(
+                    "Error: The browser window was closed or is no longer available.\n"
+                    "When using remote debugging, keep Chrome open and do not close the tab/window.\n"
+                    "Alternatively, run without remote debugging (ensure no Chrome is running on port 9222)."
+                )
+            else:
+                print(f"Error: {e}")
         except Exception as e:
             print(f"Error: {e}")
 
